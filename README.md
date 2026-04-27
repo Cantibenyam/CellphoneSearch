@@ -16,7 +16,7 @@ Web app for searching phone models and comparing listings from third-party selle
 ### 1. Prerequisites
 
 - Node.js 20+ and npm 10+
-- PostgreSQL 17 with a database named `CSE412Proj` owned by user `postgres`
+- PostgreSQL 17, with an empty database you have created (any name) and a user with permission to drop/create tables in it
 
 ### 2. Configure environment
 
@@ -25,12 +25,14 @@ cd web
 cp .env.example .env.local
 ```
 
-Edit `.env.local`:
+Edit `.env.local` with your own connection details:
 
 ```
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/CSE412Proj
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE_NAME
 SESSION_PASSWORD=replace-with-32-or-more-random-characters
 ```
+
+The reseed script reads `DATABASE_URL` and applies the schema to whatever database that URL points at, so name/user/host are entirely your choice.
 
 ### 3. Install + seed + run
 
