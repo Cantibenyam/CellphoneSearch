@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ListingForAdmin } from '@/lib/queries/listings';
 
@@ -19,6 +20,7 @@ export function AdminListingsClient({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editPrice, setEditPrice] = useState('');
 
@@ -29,7 +31,9 @@ export function AdminListingsClient({
   function onCreate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const fd = new FormData(e.currentTarget);
+    setMessage(null);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const body = {
       model_id: Number(fd.get('model_id')),
       seller_id: Number(fd.get('seller_id')),
@@ -46,13 +50,16 @@ export function AdminListingsClient({
         setError(data.error ?? 'Create failed');
         return;
       }
-      (e.target as HTMLFormElement).reset();
+      const data = await res.json();
+      setMessage(`Created listing #${data.listing_id}`);
+      form.reset();
       refresh();
     });
   }
 
   function onSavePrice(listingId: number) {
     setError(null);
+    setMessage(null);
     const price = Number(editPrice);
     if (!(price > 0)) {
       setError('Price must be > 0');
@@ -69,6 +76,9 @@ export function AdminListingsClient({
         setError(data.error ?? 'Update failed');
         return;
       }
+      setMessage(
+        `Updated listing #${listingId} price to $${price.toFixed(2)}`,
+      );
       setEditingId(null);
       setEditPrice('');
       refresh();
@@ -78,6 +88,7 @@ export function AdminListingsClient({
   function onDelete(listingId: number) {
     if (!confirm(`Delete listing #${listingId}?`)) return;
     setError(null);
+    setMessage(null);
     startTransition(async () => {
       const res = await fetch(`/api/listings/${listingId}`, {
         method: 'DELETE',
@@ -87,6 +98,7 @@ export function AdminListingsClient({
         setError(data.error ?? 'Delete failed');
         return;
       }
+      setMessage(`Deleted listing #${listingId}`);
       refresh();
     });
   }
@@ -158,6 +170,11 @@ export function AdminListingsClient({
           {error}
         </p>
       )}
+      {message && (
+        <p role="status" className="text-sm text-green-700">
+          {message}
+        </p>
+      )}
 
       <section className="rounded-lg border bg-white">
         <table className="w-full text-left text-sm">
@@ -197,6 +214,12 @@ export function AdminListingsClient({
                   )}
                 </td>
                 <td className="px-4 py-2 text-right space-x-2">
+                  <Link
+                    href={`/listings/${l.listing_id}`}
+                    className="rounded-md bg-zinc-100 px-2 py-1 text-xs hover:bg-zinc-200"
+                  >
+                    View
+                  </Link>
                   {editingId === l.listing_id ? (
                     <>
                       <button
