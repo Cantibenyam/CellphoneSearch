@@ -5,8 +5,10 @@ import { getListingsByModelId } from '@/lib/queries/listings';
 
 export default async function ModelDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ min?: string; max?: string }>;
 }) {
   const { id } = await params;
   const modelId = Number(id);
@@ -15,7 +17,17 @@ export default async function ModelDetailPage({
   const model = await getModelById(modelId);
   if (!model) notFound();
 
-  const listings = await getListingsByModelId(modelId);
+  const { min, max } = await searchParams;
+  const minPrice = min ? Number(min) : null;
+  const maxPrice = max ? Number(max) : null;
+
+  const allListings = await getListingsByModelId(modelId);
+  const listings = allListings.filter((l) => {
+    const price = Number(l.price);
+    if (minPrice !== null && price < minPrice) return false;
+    if (maxPrice !== null && price > maxPrice) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -30,13 +42,43 @@ export default async function ModelDetailPage({
         </p>
       </header>
 
+      <form method="get" className="flex items-center gap-2 text-sm">
+        <span className="text-zinc-500">Price:</span>
+        <input
+          type="number"
+          name="min"
+          defaultValue={min ?? ''}
+          placeholder="Min"
+          className="w-24 rounded-md border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <span className="text-zinc-400">–</span>
+        <input
+          type="number"
+          name="max"
+          defaultValue={max ?? ''}
+          placeholder="Max"
+          className="w-24 rounded-md border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
+        >
+          Filter
+        </button>
+        {(min || max) && (
+          <Link href={`/models/${modelId}`} className="text-zinc-400 hover:text-zinc-600">
+            Clear
+          </Link>
+        )}
+      </form>
+
       <section className="rounded-lg border bg-white">
         <div className="border-b px-4 py-3 text-sm font-semibold">
           {listings.length} listing{listings.length === 1 ? '' : 's'} (sorted by
           price ascending)
         </div>
         {listings.length === 0 ? (
-          <p className="p-4 text-zinc-500">No listings for this model.</p>
+          <p className="p-4 text-zinc-500">No listings match.</p>
         ) : (
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50">
