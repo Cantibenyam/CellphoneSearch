@@ -8,7 +8,7 @@ export default async function ModelDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ min?: string; max?: string }>;
+  searchParams: Promise<{ min?: string; max?: string; sort?: string }>;
 }) {
   const { id } = await params;
   const modelId = Number(id);
@@ -17,17 +17,31 @@ export default async function ModelDetailPage({
   const model = await getModelById(modelId);
   if (!model) notFound();
 
-  const { min, max } = await searchParams;
+  const { min, max, sort } = await searchParams;
   const minPrice = min ? Number(min) : null;
   const maxPrice = max ? Number(max) : null;
+  const sortDir = sort === 'desc' ? 'desc' : 'asc';
 
   const allListings = await getListingsByModelId(modelId);
-  const listings = allListings.filter((l) => {
-    const price = Number(l.price);
-    if (minPrice !== null && price < minPrice) return false;
-    if (maxPrice !== null && price > maxPrice) return false;
-    return true;
-  });
+  const listings = allListings
+    .filter((l) => {
+      const price = Number(l.price);
+      if (minPrice !== null && price < minPrice) return false;
+      if (maxPrice !== null && price > maxPrice) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const aPrice = Number(a.price);
+      const bPrice = Number(b.price);
+      return sortDir === 'asc' ? aPrice - bPrice : bPrice - aPrice;
+    });
+
+  const nextSort = sortDir === 'asc' ? 'desc' : 'asc';
+  const sortQuery = new URLSearchParams();
+  if (min) sortQuery.set('min', min);
+  if (max) sortQuery.set('max', max);
+  sortQuery.set('sort', nextSort);
+  const sortHref = `/models/${modelId}?${sortQuery.toString()}`;
 
   return (
     <div className="space-y-6">
@@ -59,6 +73,7 @@ export default async function ModelDetailPage({
           placeholder="Max"
           className="w-24 rounded-md border px-2 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <input type="hidden" name="sort" value={sortDir} />
         <button
           type="submit"
           className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800"
@@ -73,9 +88,16 @@ export default async function ModelDetailPage({
       </form>
 
       <section className="rounded-lg border bg-white">
-        <div className="border-b px-4 py-3 text-sm font-semibold">
-          {listings.length} listing{listings.length === 1 ? '' : 's'} (sorted by
-          price ascending)
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <span className="text-sm font-semibold">
+            {listings.length} listing{listings.length === 1 ? '' : 's'}
+          </span>
+          <Link
+            href={sortHref}
+            className="flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900"
+          >
+            Price {sortDir === 'asc' ? '▲' : '▼'}
+          </Link>
         </div>
         {listings.length === 0 ? (
           <p className="p-4 text-zinc-500">No listings match.</p>
